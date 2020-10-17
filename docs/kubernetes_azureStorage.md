@@ -18,7 +18,7 @@ az group create --name geni-azure-demo --location westeurope
 ```bash
 az acr create --resource-group geni-azure-demo --name genidemo18w --sku Basic
 ```
-# Create Kubernetes Cluster
+# Create Azure Kubernetes Cluster
 
 ```bash
 az aks create --resource-group geni-azure-demo --name geniCluster --node-count 3  --generate-ssh-keys --attach-acr genidemo18w
