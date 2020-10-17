@@ -328,4 +328,8 @@ root
 
 ```
 
+# Cleanup
 
+```bash
+az group delete -n geni-azure-demo
+```
