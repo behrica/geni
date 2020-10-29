@@ -115,23 +115,31 @@ kubectl create -f pvc.yaml
 ```Dockerfile
 FROM clojure:latest
 RUN apt-get update && apt-get install -y wget
-RUN printf  '{:deps {zero.one/geni {:mvn/version "0.0.31"} \n\
+RUN printf  '{:deps {zero.one/geni {:mvn/version "0.0.31"}  \n\
                      org.apache.spark/spark-core_2.12 {:mvn/version "3.0.1" } \n\
                      org.apache.spark/spark-mllib_2.12 {:mvn/version "3.0.1"} \n\
-                     org.apache.spark/spark-kubernetes_2.12 {:mvn/version  "3.0.1"}}}' >> deps.edn
+                     org.apache.spark/spark-kubernetes_2.12 {:mvn/version  "3.0.1"}} \n\
+                     :aliases {:nREPL \n\
+                               {:extra-deps \n\
+                                           {clj-commons/pomegranate {:mvn/version "1.2.0"} \n\
+                                           nrepl/nrepl {:mvn/version "0.8.3"} \n\
+                                           refactor-nrepl/refactor-nrepl {:mvn/version "2.5.0"} \n\
+                                           cider/cider-nrepl {:mvn/version "0.25.3"}}}}}' >> deps.edn
 
 RUN clj -P
-CMD ["clojure"]
+CMD  ["clj", "-R:nREPL",  "-m",  "nrepl.cmdline" , "--middleware", "[cider.nrepl/cider-middleware,refactor-nrepl.middleware/wrap-refactor]" ,"-p", "12345", "-h", "0.0.0.0" ]
 ```
+
 ## build driver image
 
 ```bash
 docker build -t genidemo18w.azurecr.io/geni .
+
 ```
 Push image to registry
 
 ```bash
-az acr login --resource-group geni-azure-demo --name genidemo18w
+az acr login --name genidemo18w
 docker push genidemo18w.azurecr.io/geni
 ```
 
@@ -154,7 +162,7 @@ spec:
     app: geni
   ports:
     - protocol: TCP
-      port: 12345
+      port: 77777
 ```
 
 ```bash
@@ -181,14 +189,17 @@ spec:
   containers:
   - name: geni
     image: genidemo18w.azurecr.io/geni
-    command: [ "/bin/bash", "-c", "--" ]
-    args: [ "while true; do sleep 30; done;" ]
     volumeMounts:
         - mountPath: "/data"
           name: data-storage
   serviceAccountName: spark-serviceaccount
   restartPolicy: Never
 ```
+
+
+# start driver and which launes a nrepl on port 12345
+
+This starts as well the web gui of Spark on port 4040
 
 ```bash
 kubectl create -f driver.yaml
@@ -225,27 +236,32 @@ bin/docker-image-tool.sh -r genidemo18w.azurecr.io -t v3.0.1 push
 # Copy data into storage
 
 ```bash
-kubectl exec -ti geni -n spark -- /bin/bash
+kubectl exec -ti geni -n spark -- wget https://data.cityofnewyork.us/Transportation/2018-Yellow-Taxi-Trip-Data/t29m-gskq -O /data/nyc_taxi.csv
+
 ```
 
-https://data.cityofnewyork.us/Transportation/2018-Yellow-Taxi-Trip-Data/t29m-gskq
+its 10 GB, takes a while
+
+
+# Connect to nrepl
+## forward nrepl port to local machine
+In a new shell:
+
 
 ```bash
-cd /data
-# its 10 GB, takes a while
-wget "https://data.cityofnewyork.us/api/views/t29m-gskq/rows.csv?accessType=DOWNLOAD" -O nyc_taxi.csv
+kubectl port-forward pod/geni 12345:12345 -n spark
+
 ```
 
+Connect to the forwarded repl connection at localhost:12345 with Emacs/cider
+....
+.....
 
 
 
-# Run clojre/geni code on driver pod
-## run Clojure repl on existing pod
 
-```bash
-kubectl exec -tui geni -n spark -- clj
-```
-
+Exceute the following code in Repl, this will trigger the spawning of the executor pods inside
+Kubernetes
 
 ```clojure
 (require '[zero-one.geni.core :as g])
@@ -256,24 +272,31 @@ kubectl exec -tui geni -n spark -- clj
  {:app-name "my-app"
   :log-level "INFO" ;; default is WARN
   :configs
-  {:spark.master "k8s://https://kubernetes.default.svc" ;;  might differ for you, its the output of kubecl cluster-info
-   :spark.kubernetes.container.image "genidemo18w.azurecr.io/spark:v3.0.1" ;; this is for local docker images, works for minikube
+  {:spark.master "k8s://https://kubernetes.default.svc" 
+   :spark.kubernetes.container.image "genidemo18w.azurecr.io/spark:v3.0.1" 
    :spark.kubernetes.namespace "spark"
    :spark.kubernetes.authenticate.serviceAccountName "spark-serviceaccount" ;; created above
-   :spark.executor.instances 3
+   :spark.executor.instances 2
    :spark.driver.host "headless-geni-service.spark"
-   :spark.driver.port 12345
+   :spark.driver.port  46378   
    :spark.kubernetes.executor.volumes.persistentVolumeClaim.azurefile.mount.path  "/data"
    :spark.kubernetes.executor.volumes.persistentVolumeClaim.azurefile.options.claimName "azurefile"
    }})
 
+
 ```
+
+The executors will be stopped, when the Clojure Repl is closed
+
+
 # access Spark web ui
 In an other bash shell
 
 ```bash
 kubectl port-forward pod/geni -n spark 4040:4040
 ```
+
+Access Spark web gui at http://localhost:4040
 
 ## start analysis
 
@@ -315,12 +338,19 @@ root
     }))
 
 (g/cache df)
-(-> df  (g/agg df (g/sum  :amount)) g/show)
-(-> df (g/group-by :payment-type ) (g/sum  :amount) g/show)
+
+(-> df
+    (g/agg  (g/sum  :amount))
+    g/show)
+
+(-> df
+    (g/group-by :payment-type )
+    (g/sum  :amount) g/show)
 
 ```
 
 # Cleanup
+This removes everything, so there will be no further charges on Azure.
 
 ```bash
 az group delete -n geni-azure-demo
