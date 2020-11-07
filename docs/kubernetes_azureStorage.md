@@ -244,7 +244,7 @@ kubectl exec -ti geni -n spark -- wget https://data.cityofnewyork.us/Transportat
 
 Its 10 GB, takes a while
 
-All bash commands so far have been integrated in a single bash [scrip](azureSetup/setupKubernetes.sh), which can
+All bash commands so far have been integrated in a single bash [script](azureSetup/setupKubernetes.sh), which can
 be run i one go. It has some variables at the start which you might want to edit.
 Some of the values are refred to in teh later Clojure code, so the need to match.
 
