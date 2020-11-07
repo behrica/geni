@@ -1,4 +1,5 @@
 #!/bin/bash -x
+
 set -e
 
 
@@ -19,16 +20,16 @@ az group create --name $AZURE_RESSOURCE_GROUP_NAME --location $AZURE_LOCATION
 az acr create --resource-group $AZURE_RESSOURCE_GROUP_NAME  --name $ACR_NAME --sku Basic
 az aks create --resource-group  $AZURE_RESSOURCE_GROUP_NAME --name $AKS_CLUSTER_NAME --node-count $AKS_NODE_COUNT  --generate-ssh-keys --attach-acr $ACR_NAME
 az aks get-credentials --resource-group $AZURE_RESSOURCE_GROUP_NAME  --name $AKS_CLUSTER_NAME --overwrite-existing
-az storage account create -n $AKS_PERS_STORAGE_ACCOUNT_NAME -g $AZURE_RESOURCE_GROUP_NAME -l $AZURE_LOCATION --sku Standard_LRS
+az storage account create -n $AKS_PERS_STORAGE_ACCOUNT_NAME -g $AZURE_RESSOURCE_GROUP_NAME -l $AZURE_LOCATION --sku Standard_LRS
 
 # Export the connection string as an environment variable, this is used when creating the Azure file share
-export AZURE_STORAGE_CONNECTION_STRING=$(az storage account show-connection-string -n $AKS_PERS_STORAGE_ACCOUNT_NAME -g $AKS_RESOURCE_GROUP_NAME -o tsv)
+export AZURE_STORAGE_CONNECTION_STRING=$(az storage account show-connection-string -n $AKS_PERS_STORAGE_ACCOUNT_NAME -g $AZURE_RESSOURCE_GROUP_NAME  -o tsv)
 
 # Create the file share
 az storage share create -n $AKS_PERS_SHARE_NAME --connection-string $AZURE_STORAGE_CONNECTION_STRING
 
 # Get storage account key
-export STORAGE_KEY=$(az storage account keys list --resource-group $AZURE_RESOURCE_GROUP --account-name $AKS_PERS_STORAGE_ACCOUNT_NAME --query "[0].value" -o tsv)
+export STORAGE_KEY=$(az storage account keys list --resource-group $AZURE_RESSOURCE_GROUP_NAME --account-name $AKS_PERS_STORAGE_ACCOUNT_NAME --query "[0].value" -o tsv)
 
 # Echo storage account name and key
 echo Storage account name: $AKS_PERS_STORAGE_ACCOUNT_NAME
@@ -90,7 +91,7 @@ RUN printf  '{:deps {zero.one/geni {:mvn/version "0.0.31"}  \n\
                                            cider/cider-nrepl {:mvn/version "0.25.3"}}}}}' >> deps.edn
 
 RUN clj -P
-CMD  ["clj", "-R:nREPL",  "-m",  "nrepl.cmdline" , "--middleware", "[cider.nrepl/cider-middleware,refactor-nrepl.middleware/wrap-refactor]" ,"-p", "$GENI_REPL_PORT", "-h", "0.0.0.0" ]
+CMD  ["clj", "-R:nREPL",  "-m",  "nrepl.cmdline" , "--middleware", "[cider.nrepl/cider-middleware,refactor-nrepl.middleware/wrap-refactor]" ,"-p", "$GENI_NREPL_PORT", "-h", "0.0.0.0" ]
 EOF
 
 docker build -t $ACR_NAME.azurecr.io/geni - <  Dockerfile
