@@ -18,20 +18,23 @@ az group create --name geni-azure-demo --location westeurope
 ```bash
 az acr create --resource-group geni-azure-demo --name genidemo18w --sku Basic
 ```
+
 # Create Azure Kubernetes Cluster
 
 ```bash
 az aks create --resource-group geni-azure-demo --name geniCluster --node-count 3  --generate-ssh-keys --attach-acr genidemo18w
 ```
+
 # install Kubernetes credentials into kubectl
 
 ```bash
 az aks get-credentials --resource-group geni-azure-demo --name geniCluster
 ```
 
+
 # Create storage account to hold data to analyse
 
-```
+```bash
 # Change these four parameters as needed for your own environment
 export AKS_PERS_STORAGE_ACCOUNT_NAME=genistorageaccount$RANDOM
 export AKS_PERS_RESOURCE_GROUP=geni-azure-demo
@@ -56,6 +59,7 @@ echo Storage account name: $AKS_PERS_STORAGE_ACCOUNT_NAME
 echo Storage account key: $STORAGE_KEY
 
 ```
+
 # Create persistent volume claim in Kubernetes
 ## create namespace and service account in kubernetes
 
@@ -67,7 +71,8 @@ kubectl create clusterrolebinding spark-rolebinding --clusterrole=edit --service
 ```
 
 ## Create secret to access storage
-```
+
+```bash
 kubectl create secret generic azure-secret --from-literal=azurestorageaccountname=$AKS_PERS_STORAGE_ACCOUNT_NAME --from-literal=azurestorageaccountkey=$STORAGE_KEY -n spark
 ```
 
@@ -134,8 +139,8 @@ CMD  ["clj", "-R:nREPL",  "-m",  "nrepl.cmdline" , "--middleware", "[cider.nrepl
 
 ```bash
 docker build -t genidemo18w.azurecr.io/geni .
-
 ```
+
 Push image to registry
 
 ```bash
@@ -143,12 +148,10 @@ az acr login --name genidemo18w
 docker push genidemo18w.azurecr.io/geni
 ```
 
-
-
-
 ## Create headless service for Spark driver
 
 write to headless.yaml
+
 ```yaml
 
 apiVersion: v1
@@ -196,7 +199,6 @@ spec:
   restartPolicy: Never
 ```
 
-
 # start driver and which launes a nrepl on port 12345
 
 This starts as well the web gui of Spark on port 4040
@@ -205,10 +207,10 @@ This starts as well the web gui of Spark on port 4040
 kubectl create -f driver.yaml
 ```
 
-
 # Prepare Spark worker pods
 
 ## Install spark distribution
+
 Running spark on Kubernetes requires to create Docker images for the nodes.
 
 The Spark distribution contains tools to ease the creation of suitable Docker images,
@@ -240,11 +242,16 @@ kubectl exec -ti geni -n spark -- wget https://data.cityofnewyork.us/Transportat
 
 ```
 
-its 10 GB, takes a while
+Its 10 GB, takes a while
+
+All bash commands so far have been integrated in a single bash [scrip](azureSetup/setupKubernetes.sh), which can
+be run i one go. It has some variables at the start which you might want to edit.
+Some of the values are refred to in teh later Clojure code, so the need to match.
 
 
 # Connect to nrepl
 ## forward nrepl port to local machine
+
 In a new shell:
 
 

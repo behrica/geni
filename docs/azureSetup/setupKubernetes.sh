@@ -79,7 +79,8 @@ kubectl create -f pvc.yaml
 cat > Dockerfile << EOF
 FROM clojure:latest
 RUN apt-get update && apt-get install -y wget
-RUN printf  '{:deps {zero.one/geni {:mvn/version "0.0.31"}  \n\
+RUN wget https://aka.ms/downloadazcopy-v10-linux && tar -xvf downloadazcopy-v10-linux && cp ./azcopy_linux_amd64_*/azcopy /usr/bin/
+RUN printf  '{:deps {zero.one/geni {:mvn/version "0.0.34"}  \n\
                      org.apache.spark/spark-core_2.12 {:mvn/version "3.0.1" } \n\
                      org.apache.spark/spark-mllib_2.12 {:mvn/version "3.0.1"} \n\
                      org.apache.spark/spark-kubernetes_2.12 {:mvn/version  "3.0.1"}} \n\
