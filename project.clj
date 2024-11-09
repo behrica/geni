@@ -25,7 +25,7 @@
     [ml.dmlc/xgboost4j-spark_2.12 "1.2.0"]
     [ml.dmlc/xgboost4j_2.12 "1.2.0"]])
 
-(defproject org.clojars.behrica/geni "0.0.42-CB"
+(defproject org.clojars.behrica/geni "0.0.42-CB.1"
   :jvm-opts ["-Duser.country=US" "-Duser.language=en"
              "--add-opens=java.base/java.io=ALL-UNNAMED"
              "--add-opens=java.base/java.nio=ALL-UNNAMED"
